@@ -62,18 +62,12 @@ public class GitHubWebhookController {
 
 	// 🔥 SLACK METHOD
 	private void sendToSlack(String message) {
+	    RestTemplate restTemplate = new RestTemplate();
+	    String payload = "{ \"text\": \"" + message + "\" }";
+	    HttpHeaders headers = new HttpHeaders();
+	    headers.setContentType(MediaType.APPLICATION_JSON);
+	    HttpEntity<String> request = new HttpEntity<>(payload, headers);
 
-		String webhookUrl = "https://hooks.slack.com/services/XXXXX";
-
-		RestTemplate restTemplate = new RestTemplate();
-
-		String payload = "{ \"text\": \"" + message + "\" }";
-
-		HttpHeaders headers = new HttpHeaders();
-		headers.setContentType(MediaType.APPLICATION_JSON);
-
-		HttpEntity<String> request = new HttpEntity<>(payload, headers);
-
-		restTemplate.postForObject(webhookUrl, request, String.class);
+	    restTemplate.postForObject(webhookUrl, request, String.class); // ✅ uses injected webhookUrl
 	}
 }
