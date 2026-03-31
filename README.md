@@ -1,1 +1,1 @@
-This is readme file . we using slack for triggering notification through webhook
+This is readme file . we use git events to trigger in slack.
