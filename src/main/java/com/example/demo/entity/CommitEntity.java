@@ -23,7 +23,7 @@ public class CommitEntity {
 	@Column(name = "commit_message")
 	private String message;
 
-	@Column(name = "author_name") // NEW COLUMN
+	@Column(name = "author_name") 
 	private String authorName;
 
 	@ManyToOne
