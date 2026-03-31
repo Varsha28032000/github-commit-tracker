@@ -1,5 +1,6 @@
 package com.example.demo.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -20,54 +21,84 @@ import lombok.RequiredArgsConstructor;
 @RequestMapping("/webhook")
 public class GitHubWebhookController {
 
-	private final AuthorRepository authorRepo;
-	private final CommitRepository commitRepo;
-	@Value("${slack.webhook.url}")
-	private String webhookUrl;
+    private final AuthorRepository authorRepo;
+    private final CommitRepository commitRepo;
 
-	@PostMapping("/github")
-	public String handleGitHubWebhook(@RequestBody Map<String, Object> payload) {
+    @Value("${slack.webhook.url}")
+    private String webhookUrl;
 
-		// 🔹 1. Extract author
-		Map<String, Object> pusher = (Map<String, Object>) payload.get("pusher");
-		String authorName = (String) pusher.get("name");
+    @PostMapping("/github")
+    public ResponseEntity<String> handleGitHubWebhook(
+            @RequestHeader(value = "X-GitHub-Event", required = false) String event,
+            @RequestBody Map<String, Object> payload) {
 
-		Author author = new Author();
-		author.setName(authorName);
-		author = authorRepo.save(author);
+        System.out.println("=== WEBHOOK RECEIVED ===");
+        System.out.println("Event type: " + event);
+        System.out.println("Payload: " + payload);
 
-		// 🔹 2. Extract commits
-		List<Map<String, Object>> commits = (List<Map<String, Object>>) payload.get("commits");
+        // For local testing, assume push if header is missing
+        if (event == null) {
+            event = "push";
+        }
 
-		StringBuilder message = new StringBuilder();
-		message.append(authorName).append(" pushed:\n");
+        if (!"push".equals(event)) {
+            // Ignore non-push events (like ping)
+            return ResponseEntity.ok("Ignored non-push event: " + event);
+        }
 
-		for (Map<String, Object> commitData : commits) {
-			String commitMsg = (String) commitData.get("message");
+        // Extract pusher safely
+        Map<String, Object> pusher = (Map<String, Object>) payload.get("pusher");
+        if (pusher == null) {
+            pusher = (Map<String, Object>) payload.get("sender"); // fallback
+        }
+        String authorName = pusher != null ? (String) pusher.get("name") : "Unknown";
 
-			CommitEntity commit = new CommitEntity();
-			commit.setMessage(commitMsg);
-			commit.setAuthor(author);
-			commit.setAuthorName(authorName); // 👈 ADD THIS
+        // Save Author
+        Author author = new Author();
+        author.setName(authorName);
+        author = authorRepo.save(author);
 
-			commitRepo.save(commit);
+        // Extract commits safely
+        List<Map<String, Object>> commits = (List<Map<String, Object>>) payload.get("commits");
+        if (commits == null) commits = new ArrayList<>();
 
-			message.append("- ").append(commitMsg).append("\n");
-		}
-		// 🔹 3. Send to Slack
-		sendToSlack(message.toString());
+        StringBuilder message = new StringBuilder();
+        message.append(authorName).append(" pushed:\n");
 
-		return "Webhook received!";
-	}
+        for (Map<String, Object> commitData : commits) {
+            String commitMsg = (String) commitData.get("message");
 
-	// 🔥 SLACK METHOD
-	private void sendToSlack(String message) {
-	    RestTemplate restTemplate = new RestTemplate();
-	    String payload = "{ \"text\": \"" + message + "\" }";
-	    HttpHeaders headers = new HttpHeaders();
-	    headers.setContentType(MediaType.APPLICATION_JSON);
-	    HttpEntity<String> request = new HttpEntity<>(payload, headers);
+            CommitEntity commit = new CommitEntity();
+            commit.setMessage(commitMsg);
+            commit.setAuthor(author);
+            commit.setAuthorName(authorName);
 
-	    restTemplate.postForObject(webhookUrl, request, String.class); // ✅ uses injected webhookUrl
-	}
+            commitRepo.save(commit);
+
+            message.append("- ").append(commitMsg).append("\n");
+        }
+
+        // Send Slack notification only if commits exist
+        if (!commits.isEmpty()) {
+            sendToSlack(message.toString());
+        }
+
+        return ResponseEntity.ok("Webhook processed successfully!");
+    }
+
+    // 🔥 SLACK METHOD
+    private void sendToSlack(String message) {
+        try {
+            RestTemplate restTemplate = new RestTemplate();
+            String payload = "{ \"text\": \"" + message + "\" }";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<String> request = new HttpEntity<>(payload, headers);
+
+            restTemplate.postForObject(webhookUrl, request, String.class);
+            System.out.println("✅ Slack notification sent");
+        } catch (Exception e) {
+            System.err.println("⚠️ Slack send failed: " + e.getMessage());
+        }
+    }
 }
