@@ -1,0 +1,13 @@
+# Eclipse/IDE
+*.classpath
+*.project
+*.settings/
+*.iml
+.idea/
+
+# Build
+target/
+
+# OS
+.DS_Store
+Thumbs.db
