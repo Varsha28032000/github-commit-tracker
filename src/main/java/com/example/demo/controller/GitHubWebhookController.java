@@ -78,7 +78,7 @@ public class GitHubWebhookController {
             message.append("- ").append(commitMsg).append("\n");
         }
 
-        // Send Slack notification only if commits exist
+    
         if (!commits.isEmpty()) {
             sendToSlack(message.toString());
         }
