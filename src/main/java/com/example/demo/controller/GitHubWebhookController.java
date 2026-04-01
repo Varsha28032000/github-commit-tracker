@@ -36,7 +36,7 @@ public class GitHubWebhookController {
         System.out.println("Event type: " + event);
         System.out.println("Payload: " + payload);
 
-        // For local testing, assume push if header is missing
+       
         if (event == null) {
             event = "push";
         }
