@@ -42,23 +42,22 @@ public class GitHubWebhookController {
         }
 
         if (!"push".equals(event)) {
-            // Ignore non-push events (like ping)
+       
             return ResponseEntity.ok("Ignored non-push event: " + event);
         }
 
-        // Extract pusher safely
+     
         Map<String, Object> pusher = (Map<String, Object>) payload.get("pusher");
         if (pusher == null) {
             pusher = (Map<String, Object>) payload.get("sender"); // fallback
         }
         String authorName = pusher != null ? (String) pusher.get("name") : "Unknown";
 
-        // Save Author
+
         Author author = new Author();
         author.setName(authorName);
         author = authorRepo.save(author);
 
-        // Extract commits safely
         List<Map<String, Object>> commits = (List<Map<String, Object>>) payload.get("commits");
         if (commits == null) commits = new ArrayList<>();
 
@@ -86,7 +85,6 @@ public class GitHubWebhookController {
         return ResponseEntity.ok("Webhook processed successfully!");
     }
 
-    // 🔥 SLACK METHOD
     private void sendToSlack(String message) {
         try {
             RestTemplate restTemplate = new RestTemplate();
